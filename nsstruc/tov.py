@@ -29,6 +29,8 @@ DEFAULT_RHOC_RANGE = [DEFAULT_MIN_RHOC, DEFAULT_MAX_RHOC]
 
 DEFAULT_RTOL = 0.1
 
+DEFAULT_MIN_M = 0.8 ### Msun; used to avoid integrating many models that produce NS with masses too small (and presumably R too big) to be relevant
+
 #-------------------------------------------------
 
 # DEFINE TOV AND PERTURBATION EQUATIONS
@@ -241,6 +243,7 @@ def foliate(
         warn=True,
         min_props=None, # allow us to recurse without repeating work
         max_props=None,
+        min_m=DEFAULT_MIN_M,
     ):
     '''perform a bisection search until the macroscopic quantities are sampled densely enough'''
 
@@ -296,6 +299,32 @@ def foliate(
         pressurec2_tol=pressurec2_tol,
         verbose=verbose,
     )
+
+    ### check to see whether mid_rhoc produces a star smaller than we really want
+    ### if that's the case, we do not bisect but just analyze the higher-density side
+    if m_ind is None:
+        m_ind = props.index('M') ### I think this is probably safe to call...
+
+    if mid_props[m_ind] <= min_m:
+        ### set up arguments for recursive calls
+        args = (efe, rho2p, p2rho, p2eps, p2cs2i, r0)
+        kwargs = {
+            'props':props,
+            'm_ind':m_ind,
+            'r_ind':r_ind,
+            'max_num_r':max_num_r,
+            'max_dr':max_dr,
+            'pressurec2_tol':pressurec2_tol,
+            'rtol':rtol,
+            'verbose':verbose,
+            'warn':warn,
+            'min_rhoc':mid_rhoc,
+            'max_rhoc':max_rhoc,
+            'min_props':mid_props,
+            'max_props':max_props,
+        }
+
+        return [[min_rhoc]+min_props] + foliate(*args, **kwargs)
 
     ### check to see whether we need to bisect
     ### we're doing a bisection search, so the linear interp between min_rhoc and max_rhoc is easy
