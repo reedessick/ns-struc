@@ -45,6 +45,10 @@ group.add_argument('-r', '--rhoc-range', nargs=2, type=float, default=tov.DEFAUL
 group.add_argument('--rtol', type=float, default=tov.DEFAULT_RTOL,
     help='the maximum relative error allowed between neighboring points in the resulting properties arrays.')
 
+group.add_argument('--min-m', default=tov.DEFAULT_MIN_M, type=float,
+    help='focus the bisection search only on parts of --rhoc-range that produce models above this mass. \
+There could be loopholes in the logic asssociated with non-monotonicity of M with rhoc, so we do not recommend setting particularly agressive --min-m')
+
 #---
 
 group = parser.add_argument_group('individual TOV arguments')
@@ -123,6 +127,7 @@ for eospath in args.eos:
         pressurec2_tol=args.pressurec2_tol,
         rtol=args.rtol,
         verbose=args.Verbose,
+        min_m=args.min_m,
     )
 
     if args.verbose:
