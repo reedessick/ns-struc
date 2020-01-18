@@ -282,6 +282,12 @@ def foliate(
             verbose=verbose,
         )
 
+        if m_ind is None:
+            m_ind = props.index('M')
+        if max_props[m_ind] <= min_m: ### we will never get big enough to matter, so just return what we have
+                                      ### this may cause issues because M is not necessarily monotonic with rhoc...
+            return [[min_rhoc]+min_props, [max_rhoc]+max_props]
+
     ### compute the mid point so we can estimate interpolator error
     mid_rhoc = 0.5*(min_rhoc + max_rhoc)
     # integrate properties at the bisection point
@@ -303,7 +309,7 @@ def foliate(
     ### check to see whether mid_rhoc produces a star smaller than we really want
     ### if that's the case, we do not bisect but just analyze the higher-density side
     if m_ind is None:
-        m_ind = props.index('M') ### I think this is probably safe to call...
+        m_ind = props.index('M')
 
     if mid_props[m_ind] <= min_m:
         ### set up arguments for recursive calls
