@@ -247,6 +247,9 @@ def foliate(
     # compute the properties at the lowest rhoc
     properties = []
     if min_props is None:
+        if verbose:
+            print('integrating model with rhoc=%.9e g/cm^3'%(min_rhoc))
+
         pc = rho2p(min_rhoc)
         min_props = tov(
             efe,
@@ -261,6 +264,9 @@ def foliate(
 
     # compute the properties at the highest rhoc
     if max_props is None:
+        if verbose:
+            print('integrating model with rhoc=%.9e g/cm^3'%(max_rhoc))
+
         pc = rho2p(max_rhoc)
         max_props = tov(
             efe,
@@ -276,6 +282,9 @@ def foliate(
     ### compute the mid point so we can estimate interpolator error
     mid_rhoc = 0.5*(min_rhoc + max_rhoc)
     # integrate properties at the bisection point
+    if verbose:
+        print('integrating model with rhoc=%.9e g/cm^3'%(mid_rhoc))
+
     pc = rho2p(mid_rhoc)
     mid_props = tov(
         efe,
