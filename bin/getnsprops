@@ -130,6 +130,8 @@ for eospath in args.eos:
         min_m=args.min_m,
     )
 
+    ### FIXME: add a conditional about stability of Mmax estimation? As in, if we refine the grid further around Mmax do we get convergent results
+
     if args.verbose:
         print('integrated a total of %d stellar models'%len(properties))
 
