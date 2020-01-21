@@ -1,75 +1,97 @@
-#!/usr/bin/python
-__doc__ = 'SPLITBRANCHES -- identify stable stellar configurations for selected EoSs'
-__usage__ = 'splitbranches macro-EoS1.csv,macro-EoS2.csv,... [-v] [-d ./dat/] [-o ./dat/]'
-__author__ = 'philippe.landry@ligo.org'
-__date__ = '03-2019'
+#!/usr/bin/env python
 
-import numpy as np
-from optparse import OptionParser
-from scipy.interpolate import interp1d
-from nsstruc.branch import branch
+'SPLITBRANCHES -- identify stable stellar configurations for selected EoSs'
+__author__ = 'philippe.landry@ligo.org and Reed Essick (reed.essick@gmail.com)'
+
+#-------------------------------------------------
+
 import os
+import numpy as np
+from scipy.interpolate import interp1d
 
-parser = OptionParser(usage=__usage__, description=__doc__)
-parser.add_option('-d', '--dir', default='./dat/', help='path to directory housing NS properties data, DEFAULT=./dat/', metavar='./dat/')
-parser.add_option('-o', '--outdir', default='./dat/', help='path to output data, DEFAULT=./dat/', metavar='./dat/')
-parser.add_option('-t', '--tag', default='branch-', help='tag for output data file, DEFAULT=branch-', metavar='branch-')
-parser.add_option('-f', '--foldername', default=False, help='output data folder name, DEFAULT=Auto', metavar='eos')
-parser.add_option('-v', '--verbose', action='store_true', default=False, help='toggle verbose output, DEFAULT=False', metavar='False')
+from argparse import ArgumentParser
 
-opts, args = parser.parse_args()
-eosnames = str(args[0]).split(',')
-indir = str(opts.dir)
-outdir = str(opts.outdir)
-tag = str(opts.tag)
-foldername = opts.foldername
-verb = opts.verbose
+### non-standard libraries
+from nsstruc.branch import branch
+
+#-------------------------------------------------
+
+parser = ArgumentParser(description=__doc__)
+
+parser.add_argument('paths', nargs='+', type=str)
+
+parser.add_option('-d', '--dir', default='./dat/', type=str,
+    help='path to directory housing NS properties data,')
+parser.add_option('-o', '--outdir', default='./dat/', type=str,
+    help='path to output data')
+parser.add_option('-t', '--tag', default='branch-', type=str,
+    help='tag for output data file')
+parser.add_option('-f', '--foldername', default=False,
+    help='output data folder name')
+parser.add_option('-v', '--verbose', action='store_true', default=False,
+    help='toggle verbose output')
+
+args = parser.parse_args()
+
+#------------------------
+
+eosnames = args.paths
+indir = args.dir
+outdir = args.outdir
+tag = args.tag
+foldername = args.foldername
+verb = args.verbose
+
+#-------------------------------------------------
 
 # LOAD NS PROPERTIES DATA FOR EACH EOS
 
 for eosname in eosnames:
 
-	if foldername == False:
-		shortname = (eosname.split('-')[1]).split('.')[0]
-	else:
-		shortname = foldername
-	outdir = outdir+shortname+'/'
-	if not os.path.exists(outdir): os.makedirs(outdir)
+    if foldername == False:
+        shortname = (eosname.split('-')[1]).split('.')[0]
+    else:
+        shortname = foldername
 
-	if verb == True: print 'Read macroscopic properties of '+shortname+' stars'
-	propspath = indir+eosname
-	properties = np.genfromtxt(propspath,names=True,delimiter=',')
-	props = list(properties.dtype.names)
-	numprops = len(props)
+    outdir = outdir+shortname+'/'
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
+    if verb:
+        print('Read macroscopic properties of '+shortname+' stars')
+
+    propspath = indir+eosname
+    properties = np.genfromtxt(propspath, names=True, delimiter=',')
+    props = list(properties.dtype.names)
+    numprops = len(props)
 	
 # IDENTIFY CRITICAL POINTS IN MASS--CENTRAL-DENSITY RELATION
 	
-	[critpts,signs] = branch(propspath) # critical points in rhoc, and sign of dM/drhoc
+    critpts, signs = branch(propspath) # critical points in rhoc, and sign of dM/drhoc
 	
-	num = len(critpts)-1 # number of branches, stable or unstable
-	branch = range(num) # container for list of stable branches
-	if verb == True: print 'Identify '+str(num)+' critical points in mass-central density relation'
-	j = 0
-	for i in range(num):
-	
-		if signs[i] > 0:
+    num = len(critpts)-1 # number of branches, stable or unstable
+    branch = range(num) # container for list of stable branches
+    if verb:
+        print('Identify '+str(num)+' critical points in mass-central density relation')
+
+    j = 0
+    for i in range(num):
+        if signs[i] > 0:
 		
-			branch[j] = [properties[col][critpts[i]:critpts[i+1]+1] for col in props] # save stable branches
-			j = j+1
+            branch[j] = [properties[col][critpts[i]:critpts[i+1]+1] for col in props] # save stable branches
+            j = j+1
 
 # SPLIT STABLE BRANCHES INTO SEPARATE NS PROPERTIES FILES
 	
-	if verb == True: print 'Save '+str(j)+' stable branches'
+    if verb:
+        print('Save '+str(j)+' stable branches')
 	
-	for k in range(j):
+    for k in range(j):
+        outfile = open(outdir+tag+shortname+'-'+str(k)+".csv","w")
+        outlist = ','.join(props)
+        outfile.write(outlist+'\n')
+    
+        numpts = len(branch[k][0])
 	
-		outfile = open(outdir+tag+shortname+'-'+str(k)+".csv","w")
-		outlist = ','.join(props)
-		outfile.write(outlist+'\n')
-	
-		numpts = len(branch[k][0])
-	
-		for l in range(numpts):
-	
-			outfile.write(','.join([str(branch[k][prop][l]) for prop in range(numprops)])+'\n')
-
+        for l in range(numpts):
+            outfile.write(','.join([str(branch[k][prop][l]) for prop in range(numprops)])+'\n')

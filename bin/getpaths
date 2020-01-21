@@ -1,53 +1,85 @@
-#!/usr/bin/python
-__doc__ = 'GETPATHS -- return comma-separated list of specified paths'
-__usage__ = 'GETPATHS basename reffile'
+#!/usr/bin/env python
+
+'GETPATHS -- return comma-separated list of specified paths'
 __author__ = 'philippe.landry@ligo.org'
-__date__ = '05-2019'
+
+#-------------------------------------------------
 
 import numpy as np
-from optparse import OptionParser
 import os
 import glob
 
-parser = OptionParser(usage=__usage__, description=__doc__)
-parser.add_option('-d', '--dir', default='./', help='input directory path, DEFAULT="./"', metavar='PATH/TO/DIR/')
-parser.add_option('-o', '--outdir', default='./', help='output directory path, DEFAULT="./"', metavar='PATH/TO/DIR')
-parser.add_option('-s', '--subdirnames', default='DRAWmod1,MACROdraw', help='subdirectory basenames, DEFAULT="DRAWmod1,MACROdraw"', metavar='SUBDIR_NAME1,SUBDIR_NAME2,...')
-parser.add_option('-m', '--mod', default='1,1', help='moduli for subdirectory numbering, DEFAULT="1,1"', metavar='MOD_SUBDIR1,MOD_SUBDIR2,...')
-parser.add_option('-n', '--num', default=1e5, help='number of files at which to truncate, DEFAULT=1e5', metavar='NUM_FILES')
-parser.add_option('-t', '--tag', default='', help='tag for basenames, DEFAULT=NONE', metavar='-TAG')
+from argparse import ArgumentParser
 
-opts, args = parser.parse_args()
-basename = str(args[0])
-reffile = str(args[1])
-indir = str(opts.dir)
-outdir = str(opts.outdir)
-subdirs = str(opts.subdirnames).split(',')
-mods = str(opts.mod).split(',')
+#-------------------------------------------------
+
+DEFAULT_SUBDIRNAMES = ('DRAWmod1', 'MACROdraw')
+DEFAULT_MODS = (1, 1)
+
+#-------------------------------------------------
+
+parser = ArgumentParser(description=__doc__)
+
+parser.add_argument('basename', type=str)
+parser.add_argument('reffile', type=str)
+
+parser.add_argument('-d', '--dir', default='./', type=str,
+    help='input directory path')
+parser.add_argument('-o', '--outdir', default='./', type=str,
+    help='output directory path')
+parser.add_argument('-s', '--subdirnames', nargs='+', type=str, default=DEFAULT_SUBDIRNAMES,
+    help='subdirectory basenames')
+
+parser.add_argument('-m', '--mod', default=DEFAULT_MODS, type=int,
+    help='moduli for subdirectory numbering')
+parser.add_argument('-n', '--num', default=1e5, type=float,
+    help='number of files at which to truncate')
+
+parser.add_argument('-t', '--tag', default='', type=str,
+    help='tag for basenames')
+
+args = parser.parse_args()
+
+#------------------------
+
+basename = args.basename
+reffile = args.reffile
+
+indir = args.dir
+outdir = args.outdir
+
+subdirs = args.subdirnames
+mods = args.mod
 mods = [int(mod) for mod in mods]
-num = int(opts.num)
-tag = str(opts.tag)
+
+num = args.num
+tag = args.tag)
 
 refpath = indir+reffile
-refdat = np.genfromtxt(refpath,names=True,delimiter=',',dtype=int)
+refdat = np.genfromtxt(refpath, names=True, delimiter=',', dtype=int)
 eosnums = refdat['EoS']
 
 eosnums = list(set(eosnums))
-if len(eosnums) > num: eosnums = eosnums[0:num]
+if len(eosnums) > num:
+    eosnums = eosnums[:num]
+
+#-------------------------------------------------
 
 paths = []
 for eosnum in eosnums:
 
-	i = 0
-	subpaths = []
-	for sub in subdirs:
+    i = 0
+    subpaths = []
+    for sub in subdirs:
 	
-		subpaths.append(sub+'-'+str(eosnum/mods[i]).zfill(6))
-		i = i+1
+        subpaths.append(sub+'-'+str(eosnum/mods[i]).zfill(6))
+        i = i+1
 
-	subpath = '/'.join(subpaths)
-	if subdirs[0] == 'None':	subpath = ''
-	paths.append(outdir+subpath+'/'+basename+'-'+str(eosnum).zfill(6)+tag+'.csv')
+    if subdirs[0] == 'None':
+        subpath = ''
+    else:
+        subpath = '/'.join(subpaths)
+
+    paths.append(outdir+subpath+'/'+basename+'-'+str(eosnum).zfill(6)+tag+'.csv')
 	
-print ','.join(paths)
-
+print(','.join(paths))

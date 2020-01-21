@@ -1,4 +1,4 @@
-"definition of useful physical constants"
+"""definition of useful physical constants"""
 __author__ = "philippe.landry@ligo.org and Reed Essick (reed.essick@gmail.com)"
 
 #-------------------------------------------------

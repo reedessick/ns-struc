@@ -1,37 +1,62 @@
-#!/usr/bin/python
-__doc__ = 'GETMACRO -- look up macroscopic observables for specified stellar configuration with selected EoS'
-__usage__ = 'getmacro macro-EoS1.csv,macro-EoS2.csv,... [-v] [-p M=1.4] [-d ./dat/] [-o ./dat/]'
-__author__ = 'philippe.landry@ligo.org'
-__date__ = '03-2019'
+#!/usr/bin/env python
+
+'GETMACRO -- look up macroscopic observables for specified stellar configuration with selected EoS'
+__author__ = 'philippe.landry@ligo.org and Reed Essick (reed.essick@gmail.com)'
+
+#-------------------------------------------------
 
 import numpy as np
-from optparse import OptionParser
 from scipy.interpolate import interp1d
+
+from argparse import ArgumentParser
+
 from nsstruc.macro import macro
 
-parser = OptionParser(usage=__usage__, description=__doc__)
-parser.add_option('-p', '--prop', default='M=1.4', help='macroscopic observable (M=1.4, R=max, Lambda=min, ...) at which to look up other NS properties, DEFAULT=M=1.4', metavar='M=1.4')
-parser.add_option('-d', '--dir', default='./dat/', help='path to directory housing NS properties data, DEFAULT=./dat/', metavar='./dat/')
-parser.add_option('-o', '--outdir', default='./dat/', help='path to output directory, DEFAULT=./dat/', metavar='outdir')
-parser.add_option('-t', '--tag', default='', help='tag to append to output filename, DEFAULT=None', metavar='""')
-parser.add_option('-f', '--filename', default='canon', help='output filename (automatically appends .csv), DEFAULT=canon', metavar='canon')
-parser.add_option('-b', '--branchfile', action='store_true', default=False, help='toggle expect branch file input, DEFAULT=False', metavar='False')
-parser.add_option('-v', '--verbose', action='store_true', default=False, help='toggle verbose output, DEFAULT=False', metavar='False')
+#-------------------------------------------------
 
-opts, args = parser.parse_args()
-eosnames = str(args[0]).split(',')
-prop = str(opts.prop)
-var = prop.split('=')[0]
-indir = str(opts.dir)
-outdir = str(opts.outdir)
-tag = str(opts.tag)
-filename = str(opts.filename)
-branch = opts.branchfile
-verb = opts.verbose
+parser = ArgumnetParser(description=__doc__)
+
+parser.add_argument('paths', type=str, nargs='+')
+
+parser.add_argument('-p', '--prop', nargs=2, type=str, default=('M', '1.4'),
+    help='macroscopic observable (M=1.4, R=max, Lambda=min, ...) at which to look up other NS properties, DEFAULT=M=1.4')
+
+parser.add_argument('-d', '--dir', default='./dat/', type=str,
+    help='path to directory housing NS properties data')
+
+parser.add_argument('-o', '--outdir', default='./dat/', type=str,
+    help='path to output directory')
+parser.add_argument('-t', '--tag', default='', type=str,
+    help='tag to append to output filename')
+parser.add_argument('-f', '--filename', default='canon', type=str,
+    help='output filename (automatically appends .csv), DEFAULT=canon')
+
+parser.add_argument('-b', '--branchfile', action='store_true', default=False,
+    help='toggle expect branch file input')
+parser.add_argument('-v', '--verbose', action='store_true', default=False,
+    help='toggle verbose output')
+
+#------------------------
+
+args = parser.parse_args()
+
+eosnames = args.paths
+prop = (args.prop[0], float(args.prop[1]))
+
+var = prop[0]
+
+indir = args.dir
+outdir = args.outdir
+tag = args.tag
+filename = args.filename
+branch = args.branchfile
+verb = args.verbose
+
+#-------------------------------------------------
 
 # INTERPOLATE MASS RELATIONS FOR EACH EOS
 
-properties = np.genfromtxt(indir+eosnames[0],names=True,delimiter=',')
+properties = np.genfromtxt(indir+eosnames[0], names=True, delimiter=',')
 props = list(properties.dtype.names)
 props.remove(var)
 
@@ -41,17 +66,22 @@ outfile.write(header)
 
 for eosname in eosnames:
 
-	if branch == True: shortname = eosname.split('-')[-2]+'-'+eosname.split('-')[-1]
-	else: shortname = (eosname.split('-')[-1]).split('.')[0]
-	if verb == True: print 'Read macroscopic properties of '+shortname+' stars'
+    if branch:
+        shortname = eosname.split('-')[-2]+'-'+eosname.split('-')[-1]
+    else:
+        shortname = (eosname.split('-')[-1]).split('.')[0]
 
-	propspath = indir+eosname
-	macros = macro(propspath,prop)
+    if verb:
+        print('Read macroscopic properties of '+shortname+' stars')
+
+    propspath = indir+eosname
+    macros = macro(propspath,prop)
 
 # RETURN PROPERTIES AT TARGET VALUE
 
-	if verb == True: print 'Save properties of '+prop+' star'
-	macros = [str(obs) for obs in macros]
-	macros.insert(0,shortname)
-	outfile.write(','.join(macros)+'\n')
+    if verb:
+        print('Save properties of '+prop+' star')
 
+    macros = [str(obs) for obs in macros]
+    macros.insert(0,shortname)
+    outfile.write(','.join(macros)+'\n')

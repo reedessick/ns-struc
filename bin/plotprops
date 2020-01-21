@@ -1,86 +1,132 @@
-#!/usr/bin/python
-__doc__ = 'PLOTPROPS -- plot NS properties as a function of mass for selected EoSs'
+#!/usr/bin/env python
+
+'PLOTPROPS -- plot NS properties as a function of mass for selected EoSs'
 __usage__ = 'plotprops macro-EoS1.csv,macro-EoS2.csv,... [-v] [-p rhoc,R,Lambda,...] [-l 0.5,3.0] [-d ./dat/] [-o ./dat/]'
-__author__ = 'philippe.landry@ligo.org'
-__date__ = '03-2019'
+__author__ = 'philippe.landry@ligo.org and Reed Essick (reed.essick@gmail.com)'
+
+#-------------------------------------------------
 
 import numpy as np
-from optparse import OptionParser
+
+from argparse import ArgumentParser
+
+### non-standard libraries
+from nsstruc import tov
 from nsstruc.pltsetup import *
 
-parser = OptionParser(usage=__usage__, description=__doc__)
-parser.add_option('-p', '--props', default='rhoc,R,Lambda', help='comma-separated list of NS properties to plot vs M, DEFAULT=rhoc,R,Lambda', metavar='rhoc,R,Lambda')
-parser.add_option('-l', '--lims', default='0.5,3.0', help='comma-separated M range for plot x-axis, DEFAULT=0.5,3.0', metavar='0.5,3.0')
-parser.add_option('-x', action='store_false', default=True, help='make separate figures instead of subplots with shared x-axis, DEFAULT="subplots=True"', dest='sharex')
-parser.add_option('-d', '--dir', default='./dat/', help='path to directory housing NS properties data, DEFAULT=./dat/', metavar='./dat/')
-parser.add_option('-o', '--outdir', default='./plt/', help='path to directory for plot output, DEFAULT=./plt/', metavar='./plt/')
-parser.add_option('-t', '--tag', default='', help='tag to append to output filename, DEFAULT=None', metavar='""')
-parser.add_option('-f', '--pltname', default='propsplot', help='plot output filename (automatically appends .png), DEFAULT=propsplot', metavar='propsplot')
-parser.add_option('-a', '--alpha', default=1., help='transparency of curves on plot, DEFAULT=1.0', metavar='1.0')
-parser.add_option('-L', '--legend', action='store_false', default=True, help='toggle legend display, DEFAULT=True', metavar='True')
-parser.add_option('-v', '--verbose', action='store_true', default=False, help='toggle verbose output, DEFAULT=False', metavar='False')
+#-------------------------------------------------
 
-opts, args = parser.parse_args()
-eosnames = str(args[0]).split(',')
-props = str(opts.props).split(',')
+PROPSLABELS = {
+    'rhoc': r'$\rho_c \, [\mathrm{g/cm}^3]$',
+    'R': r'$R \, \mathrm{[km]}$',
+    'Lambda': r'$\Lambda$',
+    'I': r'$I \, [10^{45} \, \mathrm{g \, cm}^2]$',
+    'Mb': r'$M_b \, [M_{\odot}]$',
+}
+
+#-------------------------------------------------
+
+parser = ArgumentParser(description=__doc__)
+
+parser.add_argument('paths', nargs='+', type=str)
+
+parser.add_argument('-p', '--props', default=tov.DEFAULT_PROPS,
+    help='comma-separated list of NS properties to plot vs M',)
+parser.add_argument('-l', '--lims', nargs=2, type=float, default=(0.5, 3.0),
+    help='comma-separated M range for plot x-axis')
+parser.add_argument('-x', '--sharex', action='store_false', default=True,
+    help='make separate figures instead of subplots with shared x-axis',)
+parser.add_argument('-d', '--dir', default='./dat/', type=str,
+    help='path to directory housing NS properties data')
+parser.add_argument('-o', '--outdir', default='./plt/', type=str,
+    help='path to directory for plot output')
+parser.add_argument('-t', '--tag', default='', type=str,
+     help='tag to append to output filename')
+parser.add_argument('-f', '--pltname', default='propsplot', type=str,
+    help='plot output filename (automatically appends .png)')
+parser.add_argument('-a', '--alpha', default=1., type=float,
+    help='transparency of curves on plot')
+parser.add_argument('-L', '--legend', action='store_false', default=True,
+    help='toggle legend display')
+parser.add_argument('-v', '--verbose', action='store_true', default=False,
+    help='toggle verbose output')
+
+args = parser.parse_args()
+
+#------------------------
+
+eosnames = args.paths
+
+props = args.props
 numprops = len(props)
-lims = str(opts.lims).split(',')
-lims = [float(lim) for lim in lims]
-sharex = opts.sharex
-indir = str(opts.dir)
-outdir = str(opts.outdir)
-tag = str(opts.tag)
-pltname = str(opts.pltname)
-a = float(opts.alpha)
-leg = opts.legend
-verb = opts.verbose
+
+lims = args.lims
+
+sharex = args.sharex
+
+indir = args.dir
+outdir = args.outdir
+tag = args.tag
+pltname = args.pltname
+a = args.alpha
+leg = args.legend
+verb = args.verbose
+
+#-------------------------------------------------
 
 fig = plt.figure(1)
 fig.subplots_adjust(hspace=0., wspace=0.)
-propslabels = {'rhoc': r'$\rho_c \, [\mathrm{g/cm}^3]$','R': r'$R \, \mathrm{[km]}$','Lambda': r'$\Lambda$','I': r'$I \, [10^{45} \, \mathrm{g \, cm}^2]$','Mb': r'$M_b \, [M_{\odot}]$'}
 
 # LOAD NS PROPERTIES FOR EACH EOS
 
 for eosname in eosnames:
 
-	shortname = (eosname.split('/')[-1]).split('.')[0]
-	if verb == True: print 'Look up properties of '+str(shortname)+' stars'
+    shortname = (eosname.split('/')[-1]).split('.')[0]
+    if verb:
+        print('Look up properties of '+str(shortname)+' stars')
 
-	propspath = indir+eosname
-	propsdat = np.genfromtxt(propspath,names=True,delimiter=',')
+    propspath = indir+eosname
+    propsdat = np.genfromtxt(propspath, names=True, delimiter=',')
 
 # PLOT NS PROPERTIES VS MASS FOR EACH EOS
 	
-	if verb == True: print 'Plotting observables vs mass for '+str(shortname)+' stars'
-	for prop in props:
+    if verb:
+        print('Plotting observables vs mass for '+str(shortname)+' stars')
+
+    for prop in props:
 	
-		subpltnum = props.index(prop)+1
-		if sharex: subplt = plt.subplot(numprops,1,subpltnum)   # make subplots
-		else: 							# or separate figs
-			plt.figure(subpltnum)
-			subplt = plt.subplot(1,1,1)
+        subpltnum = props.index(prop)+1
+        if sharex: # make subplots
+            subplt = plt.subplot(numprops,1,subpltnum)
+        else: # or separate figs
+            plt.figure(subpltnum)
+            subplt = plt.subplot(1,1,1)
 		
-		subplt.set_xlabel(r'$M$ $[M_{\odot}]$')
-		subplt.set_xlim(lims[0],lims[1])
-		subplt.set_ylabel(propslabels[prop])
-		if prop == 'Lambda':
-			if any(L > 0. for L in propsdat[prop]): subplt.set_yscale('log')
-			subplt.minorticks_off()
-		subplt.set_xticks([],[])
-		
-		subplt.plot(propsdat['M'],propsdat[prop],lw=2,label=shortname,marker='.', alpha=a)
-		
-		if not sharex: 
-			subplt.xaxis.set_major_locator(AutoLocator())
-			if leg == True: plt.legend(loc=0)		
-			plt.savefig(outdir+pltname+tag+'-'+prop+'.png')
+        subplt.set_xlabel(r'$M$ $[M_{\odot}]$')
+        subplt.set_xlim(lims[0],lims[1])
+        subplt.set_ylabel(propslabels[prop])
+        if prop == 'Lambda':
+            if any(L > 0. for L in propsdat[prop]):
+                subplt.set_yscale('log')
+            subplt.minorticks_off()
+        subplt.set_xticks([],[])
+
+        subplt.plot(propsdat['M'], propsdat[prop], lw=2, label=shortname, marker='.', alpha=a)
+
+        if not sharex:
+            subplt.xaxis.set_major_locator(AutoLocator())
+            if leg:
+                plt.legend(loc=0)
+            plt.savefig(outdir+pltname+tag+'-'+prop+'.png')
 			
-		if verb == True: print 'Done '+str(prop)+'-M relation'
+        if verb:
+            print('Done '+str(prop)+'-M relation')
 	
-	if verb == True: print 'Done all relations'
+    if verb:
+        print('Done all relations')
 
 if sharex:
-	subplt.xaxis.set_major_locator(AutoLocator())
-	if leg == True: plt.legend(loc=0)		
-	plt.savefig(outdir+pltname+tag+'.png')
-
+    subplt.xaxis.set_major_locator(AutoLocator())
+    if leg:
+        plt.legend(loc=0)		
+    plt.savefig(outdir+pltname+tag+'.png')

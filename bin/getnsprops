@@ -2,7 +2,6 @@
 
 'GETNSPROPS -- calculate NS properties as a function of central density for selected EoSs'
 __author__ = 'philippe.landry@ligo.org and Reed Essick (reed.essick@gmail.com)'
-__date__ = '03-2019'
 
 #-------------------------------------------------
 
